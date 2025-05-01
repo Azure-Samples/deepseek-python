@@ -90,7 +90,7 @@ async def chat_handler():
                         is_thinking = True
                         update.choices[0].delta.content = None
                         update.choices[0].delta.reasoning_content = ""
-                    elif content == "</think>":
+                    elif content and content.strip() == "</think>":
                         is_thinking = False
                         update.choices[0].delta.content = None
                         update.choices[0].delta.reasoning_content = ""
