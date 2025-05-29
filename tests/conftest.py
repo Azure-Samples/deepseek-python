@@ -10,7 +10,7 @@ from . import mock_cred
 @pytest.fixture
 def mock_openai_chatcompletion(monkeypatch):
     class AsyncChatCompletionIterator:
-        def __init__(self, answer: str):
+        def __init__(self, reasoning: str, answer: str):
             self.chunk_index = 0
             self.chunks = [
                 openai.types.chat.ChatCompletionChunk(
@@ -32,10 +32,41 @@ def mock_openai_chatcompletion(monkeypatch):
                     ],
                 )
             ]
+            reasoning_deltas = reasoning.split(" ")
+            for reasoning_index, reasoning_delta in enumerate(reasoning_deltas):
+                # Text completion chunks include whitespace, so we need to add it back in
+                if reasoning_index > 0:
+                    answer_delta = " " + reasoning_delta
+                self.chunks.append(
+                    openai.types.chat.ChatCompletionChunk(
+                        id="test-123",
+                        object="chat.completion.chunk",
+                        choices=[
+                            openai.types.chat.chat_completion_chunk.Choice(
+                                delta=openai.types.chat.chat_completion_chunk.ChoiceDelta(
+                                    role=None, reasoning_content=reasoning_delta
+                                ),
+                                finish_reason=None,
+                                index=0,
+                                logprobs=None,
+                                # Only Azure includes content_filter_results
+                                content_filter_results={
+                                    "hate": {"filtered": False, "severity": "safe"},
+                                    "self_harm": {"filtered": False, "severity": "safe"},
+                                    "sexual": {"filtered": False, "severity": "safe"},
+                                    "violence": {"filtered": False, "severity": "safe"},
+                                },
+                            )
+                        ],
+                        created=1703462735,
+                        model="DeepSeek-R1",
+                    )
+                )
+
             answer_deltas = answer.split(" ")
             for answer_index, answer_delta in enumerate(answer_deltas):
                 # Text completion chunks include whitespace, so we need to add it back in
-                if answer_index > 0 and answer_delta != "</think>":
+                if answer_index > 0:
                     answer_delta = " " + answer_delta
                 self.chunks.append(
                     openai.types.chat.ChatCompletionChunk(
@@ -95,9 +126,9 @@ def mock_openai_chatcompletion(monkeypatch):
         # Only mock a stream=True completion
         last_message = kwargs.get("messages")[-1]["content"]
         if last_message == "What is the capital of France?":
-            return AsyncChatCompletionIterator("<think> hmm </think> The capital of France is Paris.")
+            return AsyncChatCompletionIterator("hmm", "The capital of France is Paris.")
         elif last_message == "What is the capital of Germany?":
-            return AsyncChatCompletionIterator("<think> hmm </think> The capital of Germany is Berlin.")
+            return AsyncChatCompletionIterator("hmm", "The capital of Germany is Berlin.")
         else:
             raise ValueError(f"Unexpected message: {last_message}")
 

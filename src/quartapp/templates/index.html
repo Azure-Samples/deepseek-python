@@ -120,7 +120,7 @@
                         messageDiv.querySelector(".thoughts").style.display = "block";
                         messageDiv.querySelector(".thoughts-content").innerHTML = converter.makeHtml(thoughts);
                     }
-                } else {
+                } else if (event.delta.content) {
                     messageDiv.querySelector(".loading-bar").style.display = "none";
                     answer += event.delta.content;
                     messageDiv.querySelector(".answer-content").innerHTML = converter.makeHtml(answer);

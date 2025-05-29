@@ -123,7 +123,7 @@ module aca 'aca.bicep' = {
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
     aiServicesDeploymentName: aiServicesDeploymentName
-    aiServicesEndpoint: 'https://${aiServices.outputs.name}.services.ai.azure.com/models'
+    aiServicesEndpoint: 'https://${aiServices.outputs.name}.services.ai.azure.com'
     exists: acaExists
   }
 }
@@ -167,7 +167,7 @@ output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 
 output AZURE_DEEPSEEK_DEPLOYMENT string = aiServicesDeploymentName
-output AZURE_INFERENCE_ENDPOINT string = 'https://${aiServices.outputs.name}.services.ai.azure.com/models'
+output AZURE_INFERENCE_ENDPOINT string = 'https://${aiServices.outputs.name}.services.ai.azure.com'
 
 output SERVICE_ACA_IDENTITY_PRINCIPAL_ID string = aca.outputs.identityPrincipalId
 output SERVICE_ACA_NAME string = aca.outputs.name

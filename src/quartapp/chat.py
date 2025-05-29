@@ -1,9 +1,8 @@
 import json
 import os
 
-import httpx
 from azure.identity.aio import AzureDeveloperCliCredential, ManagedIdentityCredential, get_bearer_token_provider
-from openai import AsyncOpenAI, DefaultAsyncHttpxClient
+from openai import AsyncAzureOpenAI
 from quart import (
     Blueprint,
     Response,
@@ -32,21 +31,11 @@ async def configure_openai():
         bp.azure_credential, "https://cognitiveservices.azure.com/.default"
     )
 
-    class TokenBasedAuth(httpx.Auth):
-        async def async_auth_flow(self, request):
-            token = await openai_token_provider()
-            request.headers["Authorization"] = f"Bearer {token}"
-            yield request
-
-        def sync_auth_flow(self, request):
-            raise RuntimeError("Cannot use a sync authentication class with httpx.AsyncClient")
-
     # Create the Asynchronous Azure OpenAI client
-    bp.openai_client = AsyncOpenAI(
-        base_url=os.environ["AZURE_INFERENCE_ENDPOINT"],
-        api_key="placeholder",
-        default_query={"api-version": "2024-05-01-preview"},
-        http_client=DefaultAsyncHttpxClient(auth=TokenBasedAuth()),
+    bp.openai_client = AsyncAzureOpenAI(
+        azure_endpoint=os.environ["AZURE_INFERENCE_ENDPOINT"],
+        azure_ad_token_provider=openai_token_provider,
+        api_version="2025-04-01-preview",  # temporary
     )
 
     # Set the model name to the Azure OpenAI model deployment name
@@ -82,29 +71,9 @@ async def chat_handler():
         )
 
         try:
-            is_thinking = False
             async for update in await chat_coroutine:
                 if update.choices:
-                    content = update.choices[0].delta.content
-                    if content == "<think>":
-                        is_thinking = True
-                        update.choices[0].delta.content = None
-                        update.choices[0].delta.reasoning_content = ""
-                    elif content == "</think>":
-                        is_thinking = False
-                        update.choices[0].delta.content = None
-                        update.choices[0].delta.reasoning_content = ""
-                    elif content:
-                        if is_thinking:
-                            yield json.dumps(
-                                {"delta": {"content": None, "reasoning_content": content, "role": "assistant"}},
-                                ensure_ascii=False,
-                            ) + "\n"
-                        else:
-                            yield json.dumps(
-                                {"delta": {"content": content, "reasoning_content": None, "role": "assistant"}},
-                                ensure_ascii=False,
-                            ) + "\n"
+                    yield update.choices[0].model_dump_json() + "\n"
         except Exception as e:
             current_app.logger.error(e)
             yield json.dumps({"error": str(e)}, ensure_ascii=False) + "\n"
